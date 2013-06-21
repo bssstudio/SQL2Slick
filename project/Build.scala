@@ -1,5 +1,7 @@
 import sbt._
 import sbt.Keys._
+import sbtassembly.Plugin._
+import AssemblyKeys._
 
 object SqlToSlickBuild extends Build {
   val baseSettings = Project.defaultSettings ++ Seq(
@@ -20,7 +22,7 @@ object SqlToSlickBuild extends Build {
       libraryDependencies ++= Seq(
         "org.scalatest" %% "scalatest" % "1.9.1" % "test"
       )
-    )
+    ) ++ assemblySettings
   )
 }
 
