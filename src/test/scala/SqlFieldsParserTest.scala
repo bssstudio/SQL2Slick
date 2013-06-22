@@ -20,11 +20,11 @@ class SqlFieldsParserTest extends FunSuite {
       """.stripMargin
 
     val parsed = SqlFieldsParser.parseAll(SqlFieldsParser.fields,str)
-    val fields = parsed.get.filter(_.isDefined).map(_.get)
-    fields.foreach { f =>
-      println(SlickGenerator.genColumnDef(f))
-    }
-
+    assert(parsed.successful)
+//    val fields = parsed.get.filter(_.isDefined).map(_.get)
+//    fields.foreach { f =>
+//      println(SlickGenerator.genColumnDef(f))
+//    }
   }
 
   test("Parsing of a real life example") {
@@ -39,12 +39,12 @@ class SqlFieldsParserTest extends FunSuite {
       """.stripMargin
 
     val parsed = SqlFieldsParser.parseAll(SqlFieldsParser.fields,str)
-    println(parsed)
-    val fields = parsed.get.filter(_.isDefined).map(_.get)
-    fields.foreach { f =>
-      println(SlickGenerator.genColumnDef(f))
-    }
-
+    assert(parsed.successful)
+//    println(parsed)
+//    val fields = parsed.get.filter(_.isDefined).map(_.get)
+//    fields.foreach { f =>
+//      println(SlickGenerator.genColumnDef(f))
+//    }
   }
 
   test("Parsing of a real life example - with garbage") {
@@ -61,11 +61,12 @@ class SqlFieldsParserTest extends FunSuite {
       """.stripMargin
 
     val parsed = SqlFieldsParser.parseAll(SqlFieldsParser.fields,str)
-    println(parsed)
-    val fields = parsed.get.filter(_.isDefined).map(_.get)
-    fields.foreach { f =>
-      println(SlickGenerator.genColumnDef(f))
-    }
+    assert(parsed.successful)
+//    println(parsed)
+//    val fields = parsed.get.filter(_.isDefined).map(_.get)
+//    fields.foreach { f =>
+//      println(SlickGenerator.genColumnDef(f))
+//    }
   }
 
   test("Parsing of whole table def") {
@@ -85,6 +86,6 @@ class SqlFieldsParserTest extends FunSuite {
 
     val parsed = SqlFieldsParser.parseAll(SqlFieldsParser.table,str)
     assert(parsed.successful)
-    println(parsed)
+    //println(parsed)
   }
 }
