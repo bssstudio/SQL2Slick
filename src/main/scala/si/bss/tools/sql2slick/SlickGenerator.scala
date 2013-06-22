@@ -36,79 +36,50 @@ object SlickGenerator {
   }
 
   def genColumnDef(field: SqlField) = {
-
-    "val "+field.columnName.toCamelCaseIdent+" = column["+field.dataType+"]("+'"'+field.columnName+'"' +
-      field.nullity.fold("")( nullity => ", "+(if (nullity) { "O.Nullable" } else { "O.NotNull" }) ) +
-      (if (field.autoInc) {", O.AutoInc"} else {""}) +
-      field.default.fold("") { defa =>
-        ", O.Default("+
-          (field.dataType match {
-            case "String" => '"'+defa+'"'
-            case _ => defa
-          })+")"
-      }+
-      ")"
-  }
-
-
-  private def isFieldOptional(field: SqlField): Boolean = {
-    if (field.autoInc) {
-      true
-    } else {
-      false
+    val nullable = field.nullity.fold("")(nullity => ", " + (if (nullity) "O.Nullable" else "O.NotNull"))
+    val autoInc = if (field.autoInc) ", O.AutoInc" else ""
+    val name = field.columnName.toCamelCaseIdent
+    val foldedDefault = field.default.fold("") {defa =>
+      ", O.Default(" +
+        (field.dataType match {
+          case "String" => '"' + defa + '"'
+          case _ => defa
+        }) + ")"
     }
+
+    s""""val $name = column[${field.dataType}]("${field.columnName}" $nullable $autoInc $foldedDefault)"""
   }
+
+
+  private def isFieldOptional(field: SqlField): Boolean = field.autoInc
 
   def genStarProjection(fields: Seq[SqlField]) = {
     "def * = " +
-    (
       fields.map { field =>
-        field.columnName.toCamelCaseIdent +
-        (if (isFieldOptional(field)) {
-          ".?"
-        } else {
-          ""
-        })
+        field.columnName.toCamelCaseIdent + (if (isFieldOptional(field)) ".?" else "")
       }.mkString(" ~\n  ")
-    )
   }
 
   def genCaseClass(className: String, fields: Seq[SqlField]) = {
-    "/* Generated case class */\n" +
-    (if (fieldsContainDateTime(fields)) {
-      dateTimeImports + "\n"
-    } else {
-      ""
-    })+
-    "case class "+className+"(" +
-    (
-      fields.map { field =>
-        field.columnName.toCamelCaseIdent + ": "+
-        (if (isFieldOptional(field)) {
-          "Option["+field.dataType+"]"
-        } else {
-          field.dataType
-        })
-      }.mkString(",\n  ")
-    ) +
-    ")"
+    val genFields = fields.map { field =>
+      field.columnName.toCamelCaseIdent + ": " +
+        (if (isFieldOptional(field)) s"Option[${field.dataType}]" else field.dataType)
+    }.mkString(",\n  ")
+    val imports = if (fieldsContainDateTime(fields)) dateTimeImports + "\n" else ""
+    "/* Generated case class */\n" + imports + "case class "+className+"(" +genFields + ")"
   }
 
   def genMappedStarProjection(className: String, fields: Seq[SqlField]): String = {
     genStarProjection(fields) + " <> (" +
     " table => " + className + "(" +
-    (
-      (1 to fields.length).map(i => "table._"+i).mkString(", \n      ")
-    ) +
+      (1 to fields.length).map(i => "table._"+i).mkString(", \n      ") +
     "),"+
     "\n\n" +
     (
       "    (obj: "+className+") => Some(("+
-      (
         fields.map { field =>
           "obj."+field.columnName.toCamelCaseIdent
-        }.mkString(", \n      ")
-      ) +
+        }.mkString(", \n      ") +
       "))"
     ) +
     "\n  )"
@@ -117,17 +88,9 @@ object SlickGenerator {
 
   def genMappedTable(tableName: String, className: String, fields: Seq[SqlField]): String = {
     "/* Generated slick table class */\n" +
-    (if (fieldsContainDateTime(fields)) {
-      dateTimeMapperImports + "\n"
-    } else {
-      ""
-    })+
+    (if (fieldsContainDateTime(fields)) dateTimeMapperImports + "\n" else "")+
     "object "+className+"Table extends Table["+className+"]("+'"'+tableName+'"'+") {\n"+
-    (if (fieldsContainDateTime(fields)) {
-      "  " + dateTimeMapper + "\n"
-    } else {
-      ""
-    })+
+    (if (fieldsContainDateTime(fields)) "  " + dateTimeMapper + "\n" else "")+
     "  " + fields.map(genColumnDef).mkString("\n  ")+
     "\n\n"+
     "  " + genMappedStarProjection(className, fields).lines.mkString("\n  ")+
