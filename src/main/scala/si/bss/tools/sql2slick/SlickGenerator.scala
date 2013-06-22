@@ -47,7 +47,11 @@ object SlickGenerator {
         }) + ")"
     }
 
-    s""""val $name = column[${field.dataType}]("${field.columnName}" $nullable $autoInc $foldedDefault)"""
+    s"""val $name = column[${field.dataType}]("${field.columnName}" $nullable $autoInc $foldedDefault)"""
+      .replace(" , ",", ")
+      .replace("  "," ")
+      .replace(" )",")")
+    //s"""val $name = column[${field.dataType}]("${field.columnName}""" + '"' + (s"$nullable $autoInc $foldedDefault").trim.replace(" , ",", ") + ")"
   }
 
 
@@ -90,7 +94,7 @@ object SlickGenerator {
     "/* Generated slick table class */\n" +
     (if (fieldsContainDateTime(fields)) dateTimeMapperImports + "\n" else "")+
     "object "+className+"Table extends Table["+className+"]("+'"'+tableName+'"'+") {\n"+
-    (if (fieldsContainDateTime(fields)) "  " + dateTimeMapper + "\n" else "")+
+    (if (fieldsContainDateTime(fields)) "  " + dateTimeMapper + "\n" else "\n")+
     "  " + fields.map(genColumnDef).mkString("\n  ")+
     "\n\n"+
     "  " + genMappedStarProjection(className, fields).lines.mkString("\n  ")+
