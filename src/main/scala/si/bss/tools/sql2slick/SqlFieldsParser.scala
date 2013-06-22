@@ -13,14 +13,11 @@ case class SqlField(columnName: String, dataType: String, nullity: Option[Boolea
 
 object SqlFieldsParser extends JavaTokenParsers {
 
-
-  def table = tableHeader ~ "(" ~ fields ~ ")" ~ ".*".r.? ^^ {
-    case tableName ~ _ ~ fields ~ _  ~ _ => (tableName.filter((c:Char) => c!='`'), fields.filter(_.isDefined).map(_.get))
+  def table = tableHeader ~ "(" ~ fields <~ ")" ~ ".*".r.? ^^ {
+    case tableName ~ _ ~ fields => (tableName.filter((c:Char) => c!='`'), fields.filter(_.isDefined).map(_.get))
   }
 
-  def tableHeader = "CREATE" ~ "TEMPORARY".? ~ "TABLE" ~ ("IF" ~ "NOT" ~ "EXISTS").? ~ """`?[a-zA-Z0-9_-]+`?""".r ^^ {
-    case _ ~ _ ~ _ ~ _ ~ tableName => tableName
-  }
+  def tableHeader = "CREATE" ~ "TEMPORARY".? ~ "TABLE" ~ ("IF" ~ "NOT" ~ "EXISTS").? ~> """`?[a-zA-Z0-9_-]+`?""".r
 
   def fields = repsep(createDefinition | ignoreFld ,",")
 
@@ -41,69 +38,44 @@ object SqlFieldsParser extends JavaTokenParsers {
     case _ => true
   }
 
-  def nullnotnull = ( "NULL" | ("NOT" ~ "NULL") ) ^^ {
-    case "NULL" => true
-    case "NOT" ~ "NULL" => false
+  def nullnotnull = "NOT".? <~ "NULL" ^^ { _.isEmpty }
+
+  def default = "DEFAULT" ~> """`?'?[a-zA-Z0-9_-]+'?`?""".r  ^^ {
+    _.dropWhile(c => c=='\'' || c=='`').reverse.dropWhile(c => c=='\'' || c=='`').reverse
   }
 
-  def default = ( "DEFAULT" ~ """`?'?[a-zA-Z0-9_-]+'?`?""".r ) ^^ {
-    case "DEFAULT" ~ defval => defval.dropWhile(c => c=='\'' || c=='`').reverse.dropWhile(c => c=='\'' || c=='`').reverse
-  }
-
-  def ignoreFld: Parser[Option[SqlField]] = rep(ignoreOne) ^^ { case _ => None }
-  def ignore: Parser[String] = rep(ignoreOne) ^^ { case _ => "" }
-  def ignoreOne: Parser[String] = ("'[^']*'".r | "`[^`]*`".r  | """[a-zA-Z0-9_-]+""".r | ignoreParenthesis) ^^ { case _ => "" }
-  def ignoreParenthesis: Parser[String] = "(" ~ repsep(ignore,",") ~ ")" ^^ { case _ => "" }
+  def ignoreFld: Parser[Option[SqlField]] = rep(ignoreOne) ^^ { _ => None }
+  def ignore: Parser[String] = rep(ignoreOne) ^^ { _ => "" }
+  def ignoreOne: Parser[String] = ("'[^']*'".r | "`[^`]*`".r  | """[a-zA-Z0-9_-]+""".r | ignoreParenthesis) ^^ { _ => "" }
+  def ignoreParenthesis: Parser[String] = "(" ~ repsep(ignore,",") ~ ")" ^^ { _ => "" }
 
 
   def dataType = INTEGER  | BIGINT | VARCHAR | TINYINT | MEDIUMINT | DOUBLE | DECIMAL | TEXT | BLOB | BINARY | VARBINARY | DATETIME
 
-  def INTEGER = ("INTEGER" | "INT" | "Int" | "int" | "integer" | "Integer") ~ ("(" ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {
-    case _ => "Int"
+  def INTEGER = ("INTEGER" | "INT" | "Int" | "int" | "integer" | "Integer") ~ ("(" ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {_ => "Int"}
+
+  def TINYINT = ("TINYINT" | "tinyint") ~ ("(" ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {_ => "Int"}
+
+  def BIGINT = ("BIGINT" | "bigint") ~ ("(" ~ wholeNumber ~ ")").?  ^^ { _ => "Long"}
+
+  def MEDIUMINT = ("MEDIUMINT" | "mediumint") ~ ("(" ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ { _ => "Int"}
+
+  def VARCHAR = ("VARCHAR" | "varchar" | "CHAR" | "char") ~ ("(" ~ wholeNumber ~ ")").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~ ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ { _ => "String"}
+
+  def TEXT = ("TEXT" | "text" | "MEDIUMTEXT" | "mediumtext" | "LONGTEXT" | "longtext") ~ ("BINARY" | "binary").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~> ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ {
+    case Some(_)  => "Array[Byte]"
+    case None => "String"
   }
 
-  def TINYINT = ("TINYINT" | "tinyint") ~ ("(" ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {
-    case _ => "Int"
-  }
+  def DOUBLE = ("DOUBLE" | "double" | "FLOAT" | "float") ~ ("(" ~ wholeNumber ~"," ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ { _ => "Double"}
 
-  def BIGINT = ("BIGINT" | "bigint") ~ ("(" ~ wholeNumber ~ ")").?  ^^ {
-    case _ => "Long"
-  }
+  def DECIMAL = ("DECIMAL" | "decimal" | "NUMERIC" | "numeric") ~ ("(" ~ wholeNumber ~"," ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ { _ => "BigDecimal"}
 
-  def MEDIUMINT = ("MEDIUMINT" | "mediumint") ~ ("(" ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {
-    case _ => "Int"
-  }
+  def BLOB = ("TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "tinyblob" | "blob" | "mediumblob" | "longblob") ^^ { _ => "Array[Byte]"}
 
-  def VARCHAR = ("VARCHAR" | "varchar" | "CHAR" | "char") ~ ("(" ~ wholeNumber ~ ")").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~ ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ {
-    case _ => "String"
-  }
+  def BINARY = ("BINARY" | "binary") ~ ("(" ~ wholeNumber ~ ")").? ^^ {_ => "Array[Byte]"}
 
-  def TEXT = ("TEXT" | "text" | "MEDIUMTEXT" | "mediumtext" | "LONGTEXT" | "longtext") ~ ("BINARY" | "binary").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~ ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ {
-    case _ ~ Some(_)  => "Array[Byte]"
-    case _ ~ None => "String"
-  }
+  def VARBINARY = ("VARBINARY" | "varbinary") ~ ("(" ~ wholeNumber ~ ")") ^^ { _ => "Array[Byte]"}
 
-  def DOUBLE = ("DOUBLE" | "double" | "FLOAT" | "float") ~ ("(" ~ wholeNumber ~"," ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {
-    case _ => "Double"
-  }
-
-  def DECIMAL = ("DECIMAL" | "decimal" | "NUMERIC" | "numeric") ~ ("(" ~ wholeNumber ~"," ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ {
-    case _ => "BigDecimal"
-  }
-
-  def BLOB = ("TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "tinyblob" | "blob" | "mediumblob" | "longblob") ^^ {
-    case _ => "Array[Byte]"
-  }
-
-  def BINARY = ("BINARY" | "binary") ~ ("(" ~ wholeNumber ~ ")").? ^^ {
-    case _ ~ size => "Array[Byte]"
-  }
-
-  def VARBINARY = ("VARBINARY" | "varbinary") ~ ("(" ~ wholeNumber ~ ")") ^^ {
-    case _ => "Array[Byte]"
-  }
-
-  def DATETIME = ("DATETIME" | "datetime" | "DATE" | "date" | "TIME" | "time" | "TIMESTAMP" | "timestamp") ^^ {
-    case _ => "DateTime"
-  }
+  def DATETIME = ("DATETIME" | "datetime" | "DATE" | "date" | "TIME" | "time" | "TIMESTAMP" | "timestamp") ^^ { _ => "DateTime" }
 }
