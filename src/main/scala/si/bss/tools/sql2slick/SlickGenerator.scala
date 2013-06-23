@@ -39,7 +39,7 @@ object SlickGenerator {
     val nullable = field.nullity.fold("")(nullity => ", " + (if (nullity) "O.Nullable" else "O.NotNull"))
     val autoInc = if (field.autoInc) ", O.AutoInc" else ""
     val name = field.columnName.toCamelCaseIdent
-    val foldedDefault = field.default.fold("") {defa =>
+    val foldedDefault = field.default.fold("") { defa =>
       ", O.Default(" +
         (field.dataType match {
           case "String" => '"' + defa + '"'
