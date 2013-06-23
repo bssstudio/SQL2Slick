@@ -64,10 +64,26 @@ object SlickGenerator {
       }.mkString(" ~\n  ")
   }
 
-  def genCaseClass(className: String, fields: Seq[SqlField]) = {
+  private def caseClassFieldDefaultValue(field: SqlField): String = {
+    field.default.fold("") { defa =>
+      val value = field.dataType match {
+        case "String" => '"' + defa + '"'
+        case _ => defa
+      }
+
+      if (isFieldOptional(field)) {
+        "Some("+value+")"
+      } else {
+        value
+      }
+    }
+  }
+
+  def genCaseClass(className: String, fields: Seq[SqlField], addDefaultValue: Boolean = true) = {
     val genFields = fields.map { field =>
       field.columnName.toCamelCaseIdent + ": " +
-        (if (isFieldOptional(field)) s"Option[${field.dataType}]" else field.dataType)
+        (if (isFieldOptional(field)) s"Option[${field.dataType}]" else field.dataType) +
+        (if (addDefaultValue && field.default.isDefined) " = "+caseClassFieldDefaultValue(field) else "")
     }.mkString(",\n  ")
     val imports = if (fieldsContainDateTime(fields)) dateTimeImports + "\n" else ""
     "/* Generated case class */\n" + imports + "case class "+className+"(" +genFields + ")"
