@@ -41,9 +41,9 @@ case class Person(id: Int,
 
 /* Generated slick table class */
 object PersonTable extends Table[Person]("person") {
-  val id = column[Int]("id", O.NotNull)
-  val firstName = column[String]("first_name", O.NotNull)
-  val lastName = column[String]("last_name", O.NotNull)
+  def id = column[Int]("id", O.NotNull)
+  def firstName = column[String]("first_name", O.NotNull)
+  def lastName = column[String]("last_name", O.NotNull)
 
   def * = id ~
     firstName ~

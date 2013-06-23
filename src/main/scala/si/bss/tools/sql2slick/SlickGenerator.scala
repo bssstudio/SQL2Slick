@@ -47,7 +47,7 @@ object SlickGenerator {
         }) + ")"
     }
 
-    s"""val $name = column[${field.dataType}]("${field.columnName}" $nullable $autoInc $foldedDefault)"""
+    s"""def $name = column[${field.dataType}]("${field.columnName}" $nullable $autoInc $foldedDefault)"""
       .replace(" , ",", ")
       .replace("  "," ")
       .replace(" )",")")
