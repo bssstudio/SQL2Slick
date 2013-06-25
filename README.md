@@ -30,7 +30,7 @@ CREATE TABLE person (
 );
 ```
 
-it will emit the folowing code:
+it will emit the following code:
 
 ```scala
 /* Generated case class */
