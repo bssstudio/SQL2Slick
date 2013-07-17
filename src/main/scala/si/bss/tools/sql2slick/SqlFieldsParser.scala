@@ -62,9 +62,9 @@ object SqlFieldsParser extends JavaTokenParsers {
 
   def VARCHAR = ("VARCHAR" | "varchar" | "CHAR" | "char") ~ ("(" ~ wholeNumber ~ ")").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~ ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ { _ => "String"}
 
-  def TEXT = ("TEXT" | "text" | "MEDIUMTEXT" | "mediumtext" | "LONGTEXT" | "longtext") ~ ("BINARY" | "binary").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~> ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ {
-    case Some(_)  => "Array[Byte]"
-    case None => "String"
+  def TEXT = ("TEXT" | "text" | "MEDIUMTEXT" | "mediumtext" | "LONGTEXT" | "longtext") ~ ("BINARY" | "binary").? ~ ("CHARACTER" ~ "SET" ~ """[a-zA-Z0-9_-]+""".r).? ~ ("COLLATE" ~ """[a-zA-Z0-9_-]+""".r).? ^^ {
+    case text ~ Some(_) ~ charset ~ collate => "Array[Byte]"
+    case _ => "String"
   }
 
   def DOUBLE = ("DOUBLE" | "double" | "FLOAT" | "float") ~ ("(" ~ wholeNumber ~"," ~ wholeNumber ~ ")").? ~ ("unsigned" | "UNSIGNED").? ~ ("ZEROFILL").?  ^^ { _ => "Double"}
