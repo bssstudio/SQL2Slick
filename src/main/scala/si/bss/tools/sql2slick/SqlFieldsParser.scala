@@ -40,7 +40,7 @@ object SqlFieldsParser extends JavaTokenParsers {
 
   def nullnotnull = "NOT".? <~ "NULL" ^^ { _.isEmpty }
 
-  def default = "DEFAULT" ~> """`?'?[\s:a-zA-Z0-9_-]+'?`?""".r  ^^ {
+  def default = "DEFAULT" ~> """`?'?[\s:a-zA-Z0-9\._-]+'?`?""".r  ^^ {
     _.dropWhile(c => c=='\'' || c=='`').reverse.dropWhile(c => c=='\'' || c=='`').reverse
   }
 
